@@ -10,14 +10,14 @@ import org.apache.fop.apps.{FopConfParser, Fop, FopFactory}
 import org.apache.xmlgraphics.util.MimeConstants
 import uk.co.opsb.butler.ButlerIO
 
-case class PdfDocument(xsl: String, xml: String, configFileName: String = "fop/fop-config.xml") extends Logging {
+case class PdfDocument(xsl: String, xml: String, pdfAProfile: String, configFileName: String = "fop/fop-config.xml") extends Logging {
   def render: Array[Byte] = {
     debug(f"Generating PDF with XSL $xsl and XML $xml")
 
     val bos = new java.io.ByteArrayOutputStream()
     try {
       val start = System.currentTimeMillis();
-      transform(createFop(bos))
+      transform(createFop(bos, pdfAProfile))
       val time = System.currentTimeMillis() - start;
       info(f"PDF generated in $time ms")
       bos.toByteArray()
@@ -26,9 +26,20 @@ case class PdfDocument(xsl: String, xml: String, configFileName: String = "fop/f
     }
   }
 
-  private def createFop(out: OutputStream): Fop = {
+  private def createFop(out: OutputStream, pdfAProfile: String): Fop = {
     val fopFactory = createFopFactory()
     val foUserAgent = fopFactory.newFOUserAgent()
+
+    // Set PDF/A mode if requested
+    if (pdfAProfile.isInstanceOf[String]) {
+      // Type Cast rendererOptions to Map of Strings to fix compile time error
+      val rendererOptions = foUserAgent.getRendererOptions().asInstanceOf[java.util.Map[String, String]]
+      // Set PDF/A mode in renderer options
+      rendererOptions.put("pdf-a-mode", pdfAProfile)
+      // accessibility is required for PDF/A
+      foUserAgent.setAccessibility(true);
+    }
+
     fopFactory.newFop(MimeConstants.MIME_PDF, foUserAgent, out)
   }
 

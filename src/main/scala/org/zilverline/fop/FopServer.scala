@@ -1,4 +1,4 @@
-package org.zilverline.fop
+package org.zilverline.fogit fetch originp
 
 import grizzled.slf4j.Logging
 import unfiltered.request._
@@ -13,6 +13,7 @@ object FopServer extends Logging {
 
   object Xsl extends Params.Extract("xsl", Params.first)
   object Xml extends Params.Extract("xml", Params.first)
+  object PdfAProfile extends Params.Extract("pdf-a-profile", Params.first)
 
   val heapSize = Runtime.getRuntime().totalMemory();
   val heapMaxSize = Runtime.getRuntime().maxMemory();
@@ -24,7 +25,12 @@ object FopServer extends Logging {
 
   val plan = unfiltered.filter.Planify {
     case GET(Path("/is-alive"))                           => Ok ~> ResponseString("Ok")
-    case POST(Path("/pdf")) & Params(Xsl(xsl) & Xml(xml)) => generate(PdfDocument(xsl, xml))
+
+    case POST(Path("/pdf")) & Params(params) & Params(Xsl(xsl) & Xml(xml)) => {
+      // Extract pdf-a-profile parameter with a default value
+      val pdfAProfile = params.get("pdf-a-profile").flatMap(_.headOption).getOrElse(null)
+      generate(PdfDocument(xsl, xml, pdfAProfile))
+    }
   }
 
   def main(args: Array[String]): Unit = {
